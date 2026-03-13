@@ -68,21 +68,20 @@ async function handleChatRequest(
 		}
 
 		const stream = await env.AI.run(
-			MODEL_ID,
-			{
-				messages,
-				max_tokens: 1024,
-				stream: true,
-			},
-			{
-				// Uncomment to use AI Gateway
-				// gateway: {
-				//   id: "YOUR_GATEWAY_ID", // Replace with your AI Gateway ID
-				//   skipCache: false,      // Set to true to bypass cache
-				//   cacheTtl: 3600,        // Cache time-to-live in seconds
-				// },
-			},
-		);
+    	MODEL_ID,
+    	{
+        	messages,
+        	max_tokens: 1024,
+        	stream: true,
+    	},
+    	{
+        gateway: {
+				id: "alvesss-gateway", // Replace with your AI Gateway ID
+				skipCache: false,      // Set to true to bypass cache
+				cacheTtl: 3600,        // Cache time-to-live in seconds
+				},
+    }
+);
 
 		return new Response(stream, {
 			headers: {
