@@ -191,21 +191,56 @@
 			}
 
 			.history-item {
-				padding: 10px;
-				border-radius: 8px;
-				background: #2a2a2a;
-				margin-bottom: 8px;
-				cursor: pointer;
-				font-size: 0.85rem;
-				white-space: nowrap;
-				overflow: hidden;
-				text-overflow: ellipsis;
-				border: 1px solid transparent;
-			}
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 10px;
+                border-radius: 8px;
+                background: #2a2a2a;
+                margin-bottom: 8px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                border: 1px solid transparent;
+                transition: border-color 0.15s;
+            }
 
 			.history-item:hover {
 				border-color: var(--primary-color);
 			}
+
+			.history-item.active {
+                border-color: var(--primary-color);
+                background: #3a2a1a;
+            }
+
+			.history-title {
+                flex: 1;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                margin-right: 6px;
+            }
+
+			.delete-btn {
+                flex-shrink: 0;
+                background: transparent;
+                border: none;
+                color: var(--text-light);
+                cursor: pointer;
+                font-size: 0.75rem;
+                padding: 2px 4px;
+                border-radius: 4px;
+                opacity: 0;
+                transition: opacity 0.15s, color 0.15s;
+            }
+
+			.history-item:hover .delete-btn {
+                opacity: 1;
+            }
+ 
+            .delete-btn:hover {
+                color: #ef4444;
+            }
 
 			.new-chat-btn {
 				background: var(--primary-color);
@@ -216,11 +251,16 @@
 				cursor: pointer;
 				font-weight: bold;
 			}
+
+			.new-chat-btn:hover {
+                background-color: var(--primary-hover);
+            }
+
 		</style>
 	</head>
 	<body>
 		<header>
-			<h1>Cloudflare AI Chat</h1>
+			<h1>Alvesss AI Chat</h1>
 			<p>Powered by Cloudflare Workers AI</p>
 		</header>
 
@@ -228,7 +268,6 @@
     <aside class="sidebar">
         <button class="new-chat-btn" onclick="startNewChat()">New Chat</button>
         <div id="history-list" class="history-list">
-            <div class="history-item">Chat-History</div>
         </div>
     </aside>
 
@@ -260,7 +299,7 @@
 
 
 		<footer>
-			<p>Cloudflare Workers AI Chat Template &copy; 2026</p>
+			<p>Cloudflare & Alvesss AI BOT &copy; 2026</p>
 		</footer>
 
 		<!-- Chat app script -->
