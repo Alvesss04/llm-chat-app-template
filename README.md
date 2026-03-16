@@ -119,7 +119,7 @@ const stream = await env.AI.run(
   },
   {
     gateway: {
-      id: "alvesss-gateway",
+      id: "*******-*******",
       skipCache: false,
       cacheTtl: 3600,       // Cache responses for 1 hour
     },
@@ -127,12 +127,9 @@ const stream = await env.AI.run(
 );
 ```
 
-**What AI Gateway gives you:**
+**What AI Gateway gives to my benefit:**
 - 📊 Request logs and analytics in the Cloudflare dashboard
-- ⚡ Response caching (identical prompts return cached results within the TTL)
 - 🔁 Rate limiting and fallback options (configurable in the dashboard)
-
-> To use this, create a gateway at [dash.cloudflare.com → AI → AI Gateway](https://dash.cloudflare.com/?to=/:account/ai/ai-gateway) and replace `alvesss-gateway` with your own gateway ID.
 
 ---
 
