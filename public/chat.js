@@ -9,17 +9,13 @@
  */
 
 // ============================================================
-// 🗂️ LOCALSTORAGE KEYS
-// We use two keys in localStorage:
-//   - "conversations": an object containing ALL saved chats
-//   - "currentConversationId": the ID of the active chat
+// LOCALSTORAGE KEYS
 // ============================================================
 const STORAGE_KEY = "conversations";
 const CURRENT_ID_KEY = "currentConversationId";
 
 // ============================================================
-// 🎯 DOM ELEMENTS
-// We grab all the elements from the HTML that we'll interact with.
+// DOM ELEMENTS
 // ============================================================
 const chatMessages = document.getElementById("chat-messages");
 const userInput = document.getElementById("user-input");
@@ -29,7 +25,7 @@ const historyList = document.getElementById("history-list");
 const languageSelect  = document.getElementById("language-select");
 
 // ============================================================
-// 🧠 IN-MEMORY STATE
+// IN-MEMORY STATE
 // ============================================================
 const GREETING = "Hello! I'm an LLM chat app powered by Cloudflare Workers AI. How can I help you today?";
 
@@ -54,14 +50,14 @@ function buildPayload() {
 }
 
 // ============================================================
-// 🔧 UTILITY: Generate a unique ID
+// UTILITY: Generate a unique ID
 // ============================================================
 function generateId() {
   return `conv_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 }
 
 // ============================================================
-// 💾 LOCALSTORAGE HELPERS
+// LOCALSTORAGE HELPERS
 // ============================================================
 function getConversations() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -74,7 +70,7 @@ function saveConversations(conversations) {
 }
 
 // ============================================================
-// 💬 CREATE A NEW CONVERSATION
+// CREATE A NEW CONVERSATION
 // ============================================================
 function createNewConversation() {
   const id = generateId();
@@ -95,9 +91,7 @@ function createNewConversation() {
 }
 
 // ============================================================
-// ✏️ RENAME A CONVERSATION
-//
-// Triggered by double-clicking a title span in the sidebar.
+// RENAME A CONVERSATION
 // ============================================================
 function startRename(convId, currentTitle, spanEl, event) {
   event.stopPropagation();
@@ -148,7 +142,7 @@ function startRename(convId, currentTitle, spanEl, event) {
 }
 
 // ============================================================
-// 🖥️ RENDER THE SIDEBAR HISTORY LIST
+// RENDER THE SIDEBAR HISTORY LIST
 // ============================================================
 function renderHistoryList() {
   const conversations = getConversations();
@@ -196,7 +190,7 @@ function renderHistoryList() {
 }
 
 // ============================================================
-// 📂 LOAD A CONVERSATION
+// LOAD A CONVERSATION
 // ============================================================
 function loadConversation(id) {
   const conversations = getConversations();
@@ -220,7 +214,7 @@ function loadConversation(id) {
 }
 
 // ============================================================
-// 💾 SAVE THE CURRENT CONVERSATION
+// SAVE THE CURRENT CONVERSATION
 // ============================================================
 function saveCurrentConversation() {
   if (!currentConversationId) return;
@@ -241,7 +235,7 @@ function saveCurrentConversation() {
 }
 
 // ============================================================
-// 🗑️ DELETE A CONVERSATION
+// DELETE A CONVERSATION
 // ============================================================
 function deleteConversation(id, event) {
   event.stopPropagation(); 
@@ -264,7 +258,7 @@ function deleteConversation(id, event) {
 }
 
 // ============================================================
-// ➕ START A NEW CHAT
+// START A NEW CHAT
 // ============================================================
 function startNewChat() {
   const id = createNewConversation();
@@ -280,7 +274,7 @@ function startNewChat() {
 }
 
 // ============================================================
-// 🚀 INITIALIZATION
+// INITIALIZATION
 // ============================================================
 function init() {
   const conversations = getConversations();
@@ -299,7 +293,7 @@ function init() {
 }
 
 // ============================================================
-// ⌨️ INPUT HANDLERS (unchanged from original)
+// INPUT HANDLERS (unchanged from original)
 // ============================================================
 userInput.addEventListener("input", function () {
   this.style.height = "auto";
@@ -316,7 +310,7 @@ userInput.addEventListener("keydown", function (e) {
 sendButton.addEventListener("click", sendMessage);
 
 // ============================================================
-// 📤 SEND MESSAGE
+// SEND MESSAGE
 // ============================================================
 async function sendMessage() {
   const message = userInput.value.trim();
@@ -395,10 +389,9 @@ async function sendMessage() {
       if (sawDone) break;
     }
 
-    // ✅ AI finished responding — save to localStorage
     if (responseText.length > 0) {
       chatHistory.push({ role: "assistant", content: responseText });
-      saveCurrentConversation(); // 💾 persist the full exchange
+      saveCurrentConversation();
     }
   } catch (error) {
     console.error("Error:", error);
@@ -413,7 +406,7 @@ async function sendMessage() {
 }
 
 // ============================================================
-// 🧩 HELPERS
+// HELPERS
 // ============================================================
 
 /** Extracts text content from a Workers AI or OpenAI SSE chunk */
@@ -467,6 +460,6 @@ function consumeSseEvents(buffer) {
 }
 
 // ============================================================
-// 🏁 START THE APP
+// START THE APP
 // ============================================================
 init();

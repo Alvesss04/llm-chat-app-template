@@ -81,9 +81,9 @@ async function handleChatRequest(
     	},
     	{
         gateway: {
-				id: "alvesss-gateway", // Replace with your AI Gateway ID
-				skipCache: false,      // Set to true to bypass cache
-				cacheTtl: 3600,        // Cache time-to-live in seconds
+				id: "alvesss-gateway",
+				skipCache: false,
+				cacheTtl: 3600,
 				},
     }
 );
