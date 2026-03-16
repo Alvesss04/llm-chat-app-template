@@ -102,19 +102,6 @@ All conversations are saved in the browser's `localStorage` under a single key c
 | `init()` | Runs on page load — restores the last conversation or starts fresh |
 | `escapeHtml(text)` | Sanitises user input to prevent XSS attacks |
 
-#### Key behaviours
-- **Auto-title** — the conversation title is automatically generated from the first user message (truncated to 40 characters)
-- **Auto-save** — saves to localStorage immediately after the user sends a message, and again after the AI finishes responding
-- **On load** — automatically opens the most recent conversation
-- **Delete active** — if you delete the conversation you're currently in, it gracefully switches to the next available one (or starts a new chat if none remain)
-- **Security** — all user content is passed through `escapeHtml()` before being rendered in the DOM
-
-#### What localStorage means for privacy
-- ✅ History is stored **only in your browser** — no server ever stores it
-- ✅ Not accessible to other users, or anyone else
-- ❌ History does **not** sync across devices or browsers
-- ❌ Clearing browser data will delete the history
-- ℹ️ Undeploying the Worker does **not** affect the saved history
 
 ---
 
