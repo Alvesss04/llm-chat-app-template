@@ -313,7 +313,66 @@
             .sidebar-divider {
                 border: none;
                 border-top: 1px solid var(--border-color);
-                margin: 2px 0;
+                                margin: 6px 0;
+            }
+
+            /* ── SEARCH BOX ── */
+            .search-wrapper {
+                position: relative;
+                width: 100%;
+            }
+
+            .search-icon {
+                position: absolute;
+                left: 9px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 0.75rem;
+                pointer-events: none;
+            }
+
+            #search-input {
+                width: 100%;
+                padding: 7px 10px 7px 28px;
+                background: var(--bg-input);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                color: var(--text-main);
+                font-size: 0.82rem;
+                font-family: inherit;
+                outline: none;
+                transition: border-color 0.15s;
+            }
+
+            #search-input::placeholder { color: var(--text-light); }
+            #search-input:focus { border-color: var(--primary-color); }
+
+            /* Highlighted matching text inside titles */
+            .search-highlight {
+                background: var(--primary-color);
+                color: white;
+                border-radius: 2px;
+                padding: 0 2px;
+            }
+
+            /* "X msg" badge when match is inside message content */
+            .match-badge {
+                font-size: 0.65rem;
+                background: #3a2a1a;
+                color: var(--primary-color);
+                border: 1px solid var(--primary-color);
+                border-radius: 10px;
+                padding: 1px 5px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* Right side of each history item: badge + delete btn */
+            .item-right {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-shrink: 0;
             }
 
 		</style>
@@ -348,9 +407,21 @@
                     </select>
                 </div>
  
+                 <hr class="sidebar-divider" />
+ 
+                <!-- 🔍 Search box — filters the sidebar live as you type -->
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input
+                        id="search-input"
+                        type="text"
+                        placeholder="Search conversations..."
+                        autocomplete="off"
+                    />
+                </div>
+ 
                 <hr class="sidebar-divider" />
-        <div id="history-list" class="history-list">
-        </div>
+				<div id="history-list" class="history-list"></div>
     </aside>
 
     <div class="chat-container">

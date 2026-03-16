@@ -23,6 +23,7 @@ const sendButton = document.getElementById("send-button");
 const typingIndicator = document.getElementById("typing-indicator");
 const historyList = document.getElementById("history-list");
 const languageSelect  = document.getElementById("language-select");
+const searchInput = document.getElementById("search-input");
 
 // ============================================================
 // IN-MEMORY STATE
@@ -142,10 +143,39 @@ function startRename(convId, currentTitle, spanEl, event) {
 }
 
 // ============================================================
+// SEARCH — getSearchQuery()
+// ============================================================
+function getSearchQuery() {
+  return searchInput ? searchInput.value.trim().toLowerCase() : "";
+}
+
+// ============================================================
+// SEARCH — matchConversation(conv, query)
+// ============================================================
+function matchConversation(conv, query) {
+  if (!query) return { matched: true, messageMatches: 0 };
+ 
+  const titleMatches = conv.title.toLowerCase().includes(query);
+ 
+  const messageMatches = conv.messages.filter(
+    (m) => m.role !== "system" && m.content.toLowerCase().includes(query)
+  ).length;
+ 
+  return {
+    matched: titleMatches || messageMatches > 0,
+    messageMatches,
+    titleMatches,
+  };
+}
+
+// ============================================================
 // RENDER THE SIDEBAR HISTORY LIST
+// Search-aware: reads the query, filters, highlights matches
 // ============================================================
 function renderHistoryList() {
   const conversations = getConversations();
+  const query = getSearchQuery(); // 🔍 read current search text
+
   const sorted = Object.values(conversations).sort(
     (a, b) => b.createdAt - a.createdAt
   );
@@ -153,36 +183,63 @@ function renderHistoryList() {
   historyList.innerHTML = "";
 
   if (sorted.length === 0) {
-    historyList.innerHTML = `<p style="color: var(--text-light); font-size: 0.8rem; text-align:center; margin-top: 10px;">No conversations yet</p>`;
+    historyList.innerHTML = `<p style="color:var(--text-light);font-size:0.8rem;text-align:center;margin-top:10px;">No conversations yet</p>`;
     return;
   }
 
-  sorted.forEach((conv) => {
+  // Only keep conversations that match the query (all pass when query is empty)
+  const filtered = sorted.filter((conv) => matchConversation(conv, query).matched);
+
+  if (filtered.length === 0) {
+    historyList.innerHTML = `<p style="color:var(--text-light);font-size:0.8rem;text-align:center;margin-top:10px;">No results for "${escapeHtml(query)}"</p>`;
+    return;
+  }
+
+  filtered.forEach((conv) => {
+    const { messageMatches, titleMatches } = matchConversation(conv, query);
+
     const item = document.createElement("div");
     item.className = "history-item" + (conv.id === currentConversationId ? " active" : "");
-    
     item.dataset.convId = conv.id;
 
-  
     const titleSpan = document.createElement("span");
     titleSpan.className = "history-title";
     titleSpan.title = conv.title;
-    titleSpan.textContent = conv.title;
+
+    // Highlight the matching part of the title in orange
+    if (query && titleMatches) {
+      const regex = new RegExp(`(${escapeRegex(query)})`, "gi");
+      titleSpan.innerHTML = escapeHtml(conv.title).replace(
+        regex, `<mark class="search-highlight">$1</mark>`
+      );
+    } else {
+      titleSpan.textContent = conv.title;
+    }
+
     titleSpan.addEventListener("dblclick", (e) =>
       startRename(conv.id, conv.title, titleSpan, e)
     );
- 
-    // Delete button
+
+    // Right side: optional "X msg" badge + delete button
+    const rightSide = document.createElement("div");
+    rightSide.className = "item-right";
+
+    if (query && messageMatches > 0 && !titleMatches) {
+      const badge = document.createElement("span");
+      badge.className = "match-badge";
+      badge.textContent = `${messageMatches} msg`;
+      rightSide.appendChild(badge);
+    }
+
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "delete-btn";
     deleteBtn.title = "Delete conversation";
     deleteBtn.textContent = "✕";
     deleteBtn.addEventListener("click", (e) => deleteConversation(conv.id, e));
- 
-    item.appendChild(titleSpan);
-    item.appendChild(deleteBtn);
+    rightSide.appendChild(deleteBtn);
 
-    // Clicking the item (not the delete button) loads that conversation
+    item.appendChild(titleSpan);
+    item.appendChild(rightSide);
     item.addEventListener("click", () => loadConversation(conv.id));
 
     historyList.appendChild(item);
@@ -277,6 +334,11 @@ function startNewChat() {
 // INITIALIZATION
 // ============================================================
 function init() {
+  // 🔍 Wire up search — filters the sidebar on every keystroke
+  if (searchInput) {
+    searchInput.addEventListener("input", () => renderHistoryList());
+  }
+
   const conversations = getConversations();
   const ids = Object.keys(conversations);
 
@@ -436,6 +498,11 @@ function escapeHtml(text) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Escapes special regex characters so user input is treated as plain text */
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Parses Server-Sent Events from a raw buffer string */

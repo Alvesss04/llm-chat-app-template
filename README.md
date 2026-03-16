@@ -191,8 +191,8 @@ npx wrangler tail
 - 📊 **Local chat history** — to save the history locally - DONE ✅
 - ✏️ **Rename conversations** — double-click a title in the sidebar to edit it - DONE ✅
 - 🌐 **Multi-language UI** — change the AI language before texting - DONE ✅
-- 🤖 **New and multiple chats** — being able to have multiple chats and create new ones when needed - DONE ✅
-- 🔍 **Search** — filter conversations by keyword
+- 🤖 **New and multiple chats** — have multiple chats and create new ones when needed - DONE ✅
+- 🔍 **Search** — filter conversations by keyword 
 - 📝 **Markdown rendering** — render AI responses as formatted markdown
 - 📤 **Export** — download a conversation as `.txt` or `.md`
 - ☁️ **Server-side storage** — move chat history to Cloudflare KV or D1 so it syncs across devices
