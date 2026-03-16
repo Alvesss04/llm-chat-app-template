@@ -42,7 +42,7 @@ Added a sidebar panel to the left of the chat that shows all saved conversations
 ```html
 <div class="app-layout">
   <aside class="sidebar">
-    <button class="new-chat-btn">+ Nova Conversa</button>
+    <button class="new-chat-btn">New Chat/button>
     <div id="history-list" class="history-list"></div>
   </aside>
   <div class="chat-container">...</div>
