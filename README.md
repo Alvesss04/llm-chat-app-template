@@ -1,153 +1,225 @@
-# LLM Chat Application Template
+# 🤖 LLM Chat App — by Alvesss04
 
-A simple, ready-to-deploy chat application template powered by Cloudflare Workers AI. This template provides a clean starting point for building AI chat applications with streaming responses.
+A customised AI chat application built on top of the [Cloudflare Workers AI template](https://developers.cloudflare.com/workers-ai/), featuring a dark UI, persistent chat history, and AI Gateway integration.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/llm-chat-app-template)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Alvesss04/llm-chat-app-template)
 
-<!-- dash-content-start -->
+---
 
-## Demo
+## ✨ What I Changed & Added
 
-This template demonstrates how to build an AI-powered chat interface using Cloudflare Workers AI with streaming responses. It features:
+This project started from Cloudflare's official `llm-chat-app-template`. Below is everything that was customised or built on top of the original.
 
-- Real-time streaming of AI responses using Server-Sent Events (SSE)
-- Easy customization of models and system prompts
-- Support for AI Gateway integration
-- Clean, responsive UI that works on mobile and desktop
+---
 
-## Features
+### 🎨 Visual Redesign (`public/index.html`)
 
-- 💬 Simple and responsive chat interface
-- ⚡ Server-Sent Events (SSE) for streaming responses
-- 🧠 Powered by Cloudflare Workers AI LLMs
-- 🛠️ Built with TypeScript and Cloudflare Workers
-- 📱 Mobile-friendly design
-- 🔄 Maintains chat history on the client
-- 🔎 Built-in Observability logging
-<!-- dash-content-end -->
+The original template had a basic light-themed UI. I redesigned it with a full dark theme using a custom CSS variable system:
 
-## Getting Started
+| Variable | Value | Purpose |
+|---|---|---|
+| `--bg-main` | `#121212` | Page background |
+| `--bg-chat` | `#1c1c1c` | Chat area background |
+| `--bg-input` | `#2a2a2a` | Input field background |
+| `--primary-color` | `#f6821f` | Cloudflare orange accent |
+| `--user-msg-bg` | `#f6821f` | User message bubbles |
+| `--assistant-msg-bg` | `#545454` | AI message bubbles |
+
+Other visual changes:
+- Rounded chat container with a visible border
+- Distinct user vs assistant message bubble styles
+- Responsive layout that works on mobile and desktop
+- Custom styled send button with hover and disabled states
+- Typing indicator styled in the brand orange
+
+---
+
+### 🗂️ Chat History Sidebar (`public/index.html`)
+
+Added a sidebar panel to the left of the chat that shows all saved conversations. Built entirely with HTML and CSS — no extra libraries.
+
+**New HTML structure:**
+```html
+<div class="app-layout">
+  <aside class="sidebar">
+    <button class="new-chat-btn">+ Nova Conversa</button>
+    <div id="history-list" class="history-list"></div>
+  </aside>
+  <div class="chat-container">...</div>
+</div>
+```
+
+**New CSS classes added:**
+- `.app-layout` — flexbox wrapper that holds sidebar + chat side by side
+- `.sidebar` — fixed-width panel (240px) with its own scroll
+- `.history-list` — scrollable list of conversation items
+- `.history-item` — individual conversation row with title + delete button
+- `.history-item.active` — highlights the currently open conversation
+- `.history-title` — truncates long titles with ellipsis
+- `.delete-btn` — hidden by default, appears on hover
+- `.new-chat-btn` — styled button to start a fresh conversation
+
+---
+
+### 💾 Persistent Chat History (`public/chat.js`)
+
+This was the biggest addition. The original `chat.js` stored messages only in a JavaScript variable (`chatHistory`), which reset every time the page was refreshed.
+
+I replaced that with a full **localStorage-based persistence system**.
+
+#### How it works
+
+All conversations are saved in the browser's `localStorage` under a single key called `"conversations"`. Each conversation is an object shaped like this:
+
+```json
+{
+  "conv_1718123456_4823": {
+    "id": "conv_1718123456_4823",
+    "title": "How does Cloudflare work...",
+    "createdAt": 1718123456789,
+    "messages": [
+      { "role": "assistant", "content": "Hello!..." },
+      { "role": "user", "content": "How does Cloudflare work?" },
+      { "role": "assistant", "content": "Great question!..." }
+    ]
+  }
+}
+```
+
+#### New functions added
+
+| Function | What it does |
+|---|---|
+| `generateId()` | Creates a unique ID using timestamp + random number |
+| `getConversations()` | Reads all conversations from localStorage |
+| `saveConversations()` | Writes all conversations back to localStorage |
+| `createNewConversation()` | Creates a fresh conversation and saves it |
+| `loadConversation(id)` | Loads a saved conversation into the chat UI |
+| `saveCurrentConversation()` | Persists the current chat after every message |
+| `renderHistoryList()` | Rebuilds the sidebar list from localStorage |
+| `deleteConversation(id, event)` | Removes a conversation and handles edge cases |
+| `startNewChat()` | Resets the UI and creates a new conversation |
+| `init()` | Runs on page load — restores the last conversation or starts fresh |
+| `escapeHtml(text)` | Sanitises user input to prevent XSS attacks |
+
+#### Key behaviours
+- **Auto-title** — the conversation title is automatically generated from the first user message (truncated to 40 characters)
+- **Auto-save** — saves to localStorage immediately after the user sends a message, and again after the AI finishes responding
+- **On load** — automatically opens the most recent conversation
+- **Delete active** — if you delete the conversation you're currently in, it gracefully switches to the next available one (or starts a new chat if none remain)
+- **Security** — all user content is passed through `escapeHtml()` before being rendered in the DOM
+
+#### What localStorage means for privacy
+- ✅ History is stored **only in your browser** — no server ever stores it
+- ✅ Not accessible to other users, or anyone else
+- ❌ History does **not** sync across devices or browsers
+- ❌ Clearing browser data will delete the history
+- ℹ️ Undeploying the Worker does **not** affect the saved history
+
+---
+
+### ⚙️ AI Gateway Integration (`src/index.ts`)
+
+Enabled Cloudflare's AI Gateway for the Workers AI call, which adds caching, analytics, and observability on top of the model requests.
+
+```ts
+const stream = await env.AI.run(
+  MODEL_ID,
+  {
+    messages,
+    max_tokens: 1024,
+    stream: true,
+  },
+  {
+    gateway: {
+      id: "alvesss-gateway",
+      skipCache: false,
+      cacheTtl: 3600,       // Cache responses for 1 hour
+    },
+  }
+);
+```
+
+**What AI Gateway gives you:**
+- 📊 Request logs and analytics in the Cloudflare dashboard
+- ⚡ Response caching (identical prompts return cached results within the TTL)
+- 🔁 Rate limiting and fallback options (configurable in the dashboard)
+
+> To use this, create a gateway at [dash.cloudflare.com → AI → AI Gateway](https://dash.cloudflare.com/?to=/:account/ai/ai-gateway) and replace `alvesss-gateway` with your own gateway ID.
+
+---
+
+### 🧠 Custom System Prompt (`src/index.ts`)
+
+Changed the default system prompt to make the assistant friendlier and clearer:
+
+```ts
+const SYSTEM_PROMPT =
+  "You are a friendly, patient assistant who happily helps by giving simple, clear, and reliable answers.";
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+/
+├── public/
+│   ├── index.html      # Chat UI — redesigned dark theme + sidebar
+│   └── chat.js         # Frontend logic — full chat history system
+├── src/
+│   ├── index.ts        # Worker — AI Gateway enabled, custom system prompt
+│   └── types.ts        # TypeScript types (unchanged)
+├── wrangler.jsonc      # Cloudflare Worker config (unchanged)
+└── README.md           # This file
+```
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18 or newer)
+- [Node.js](https://nodejs.org/) v18+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - A Cloudflare account with Workers AI access
 
-### Installation
-
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/cloudflare/templates.git
-   cd templates/llm-chat-app
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Generate Worker type definitions:
-   ```bash
-   npm run cf-typegen
-   ```
-
-### Development
-
-Start a local development server:
-
+### Run locally
 ```bash
+npm install
 npm run dev
+# Opens at http://localhost:8787
 ```
 
-This will start a local server at http://localhost:8787.
-
-Note: Using Workers AI accesses your Cloudflare account even during local development, which will incur usage charges.
-
-### Deployment
-
-Deploy to Cloudflare Workers:
-
+### Deploy
 ```bash
 npm run deploy
 ```
 
-### Monitor
-
-View real-time logs associated with any deployed Worker:
-
+### View live logs
 ```bash
-npm wrangler tail
+npx wrangler tail
 ```
 
-## Project Structure
+---
 
-```
-/
-├── public/             # Static assets
-│   ├── index.html      # Chat UI HTML
-│   └── chat.js         # Chat UI frontend script
-├── src/
-│   ├── index.ts        # Main Worker entry point
-│   └── types.ts        # TypeScript type definitions
-├── test/               # Test files
-├── wrangler.jsonc      # Cloudflare Worker configuration
-├── tsconfig.json       # TypeScript configuration
-└── README.md           # This documentation
-```
+## 🔮 Features and Ideas to implement.
 
-## How It Works
+- ☁️ **Server-side storage** — move chat history to Cloudflare KV or D1 so it syncs across devices
+- ✏️ **Rename conversations** — double-click a title in the sidebar to edit it
+- 🔍 **Search** — filter conversations by keyword
+- 📝 **Markdown rendering** — render AI responses as formatted markdown
+- 📤 **Export** — download a conversation as `.txt` or `.md`
+- 🌐 **Multi-language UI** — change the AI language before texting
 
-### Backend
+---
 
-The backend is built with Cloudflare Workers and uses the Workers AI platform to generate responses. The main components are:
+## 📚 Resources
 
-1. **API Endpoint** (`/api/chat`): Accepts POST requests with chat messages and streams responses
-2. **Streaming**: Uses Server-Sent Events (SSE) for real-time streaming of AI responses
-3. **Workers AI Binding**: Connects to Cloudflare's AI service via the Workers AI binding
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
+- [Cloudflare Workers AI Models](https://developers.cloudflare.com/workers-ai/models/)
+- [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)
+- [MDN: localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)
 
-### Frontend
+---
 
-The frontend is a simple HTML/CSS/JavaScript application that:
-
-1. Presents a chat interface
-2. Sends user messages to the API
-3. Processes streaming responses in real-time
-4. Maintains chat history on the client side
-
-## Customization
-
-### Changing the Model
-
-To use a different AI model, update the `MODEL_ID` constant in `src/index.ts`. You can find available models in the [Cloudflare Workers AI documentation](https://developers.cloudflare.com/workers-ai/models/).
-
-### Using AI Gateway
-
-The template includes commented code for AI Gateway integration, which provides additional capabilities like rate limiting, caching, and analytics.
-
-To enable AI Gateway:
-
-1. [Create an AI Gateway](https://dash.cloudflare.com/?to=/:account/ai/ai-gateway) in your Cloudflare dashboard
-2. Uncomment the gateway configuration in `src/index.ts`
-3. Replace `YOUR_GATEWAY_ID` with your actual AI Gateway ID
-4. Configure other gateway options as needed:
-   - `skipCache`: Set to `true` to bypass gateway caching
-   - `cacheTtl`: Set the cache time-to-live in seconds
-
-Learn more about [AI Gateway](https://developers.cloudflare.com/ai-gateway/).
-
-### Modifying the System Prompt
-
-The default system prompt can be changed by updating the `SYSTEM_PROMPT` constant in `src/index.ts`.
-
-### Styling
-
-The UI styling is contained in the `<style>` section of `public/index.html`. You can modify the CSS variables at the top to quickly change the color scheme.
-
-## Resources
-
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Cloudflare Workers AI Documentation](https://developers.cloudflare.com/workers-ai/)
-- [Workers AI Models](https://developers.cloudflare.com/workers-ai/models/)
+*Built on top of the [Cloudflare LLM Chat App Template](https://github.com/cloudflare/templates/tree/main/llm-chat-app-template) • Customised by [Alvesss04](https://github.com/Alvesss04)*
