@@ -26,23 +26,35 @@ const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 const typingIndicator = document.getElementById("typing-indicator");
 const historyList = document.getElementById("history-list");
+const languageSelect  = document.getElementById("language-select");
 
 // ============================================================
 // 🧠 IN-MEMORY STATE
-// chatHistory  → the messages of the CURRENT active conversation
-// currentId    → the ID of the active conversation
-// isProcessing → prevents sending while AI is responding
 // ============================================================
 const GREETING = "Hello! I'm an LLM chat app powered by Cloudflare Workers AI. How can I help you today?";
+
+const BASE_SYSTEM_PROMPT =
+  "You are a friendly, patient assistant who happily helps by giving simple, clear, and reliable answers.";
 
 let chatHistory = [];
 let currentConversationId = null;
 let isProcessing = false;
 
+
+function getSystemPrompt() {
+  const lang = languageSelect ? languageSelect.value : "English";
+  if (lang === "English") return BASE_SYSTEM_PROMPT;
+  return `${BASE_SYSTEM_PROMPT} Always respond in ${lang}, regardless of the language the user writes in.`;
+}
+
+function buildPayload() {
+  const systemMessage = { role: "system", content: getSystemPrompt() };
+  const conversation  = chatHistory.filter((m) => m.role !== "system");
+  return [systemMessage, ...conversation];
+}
+
 // ============================================================
 // 🔧 UTILITY: Generate a unique ID
-// We use the current timestamp + a random number.
-// Example output: "conv_1718123456789_4823"
 // ============================================================
 function generateId() {
   return `conv_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -50,10 +62,6 @@ function generateId() {
 
 // ============================================================
 // 💾 LOCALSTORAGE HELPERS
-//
-// Think of localStorage like a small database in the browser.
-// It stores key → value pairs, but only strings — so we use
-// JSON.stringify() to save objects and JSON.parse() to read them.
 // ============================================================
 function getConversations() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -67,16 +75,6 @@ function saveConversations(conversations) {
 
 // ============================================================
 // 💬 CREATE A NEW CONVERSATION
-// This is called when the user clicks "+ Nova Conversa" OR
-// when the page first loads and there are no saved chats.
-//
-// Each conversation is an object like:
-// {
-//   id: "conv_1234",
-//   title: "Ask about Cloudflare...",  ← derived from 1st user message
-//   createdAt: 1718123456789,          ← timestamp
-//   messages: [ { role, content }, ... ]
-// }
 // ============================================================
 function createNewConversation() {
   const id = generateId();
@@ -97,14 +95,63 @@ function createNewConversation() {
 }
 
 // ============================================================
+// ✏️ RENAME A CONVERSATION
+//
+// Triggered by double-clicking a title span in the sidebar.
+// ============================================================
+function startRename(convId, currentTitle, spanEl, event) {
+  event.stopPropagation();
+
+  const liveItem = historyList.querySelector(`[data-conv-id="${convId}"]`);
+  if (!liveItem) return;
+  const liveSpan = liveItem.querySelector(".history-title");
+  if (!liveSpan) return;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = liveSpan.textContent;
+  input.className = "rename-input";
+  liveSpan.replaceWith(input);
+
+  input.focus();
+  input.select();
+ 
+  input.addEventListener("click", (e) => e.stopPropagation());
+ 
+  let saved = false;
+ 
+  function saveRename() {
+    if (saved) return;
+    saved = true;
+    const newTitle = input.value.trim() || currentTitle;
+    const conversations = getConversations();
+    if (conversations[convId]) {
+      conversations[convId].title = newTitle;
+      saveConversations(conversations);
+    }
+    renderHistoryList();
+  }
+ 
+  function cancelRename() {
+    if (saved) return;
+    saved = true;
+    renderHistoryList();
+  }
+ 
+  input.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") { e.preventDefault(); saveRename(); }
+    if (e.key === "Escape") cancelRename();
+  });
+ 
+  input.addEventListener("blur", saveRename);
+}
+
+// ============================================================
 // 🖥️ RENDER THE SIDEBAR HISTORY LIST
-// This rebuilds the entire sidebar list from scratch every time
-// something changes (new chat, new message, delete, etc.)
 // ============================================================
 function renderHistoryList() {
   const conversations = getConversations();
-
-  // Sort conversations newest first
   const sorted = Object.values(conversations).sort(
     (a, b) => b.createdAt - a.createdAt
   );
@@ -119,12 +166,27 @@ function renderHistoryList() {
   sorted.forEach((conv) => {
     const item = document.createElement("div");
     item.className = "history-item" + (conv.id === currentConversationId ? " active" : "");
+    
+    item.dataset.convId = conv.id;
 
-    // 📝 The title is shown on the left, delete button on the right
-    item.innerHTML = `
-      <span class="history-title" title="${escapeHtml(conv.title)}">${escapeHtml(conv.title)}</span>
-      <button class="delete-btn" title="Delete conversation" onclick="deleteConversation('${conv.id}', event)">✕</button>
-    `;
+  
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "history-title";
+    titleSpan.title = conv.title;
+    titleSpan.textContent = conv.title;
+    titleSpan.addEventListener("dblclick", (e) =>
+      startRename(conv.id, conv.title, titleSpan, e)
+    );
+ 
+    // Delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "delete-btn";
+    deleteBtn.title = "Delete conversation";
+    deleteBtn.textContent = "✕";
+    deleteBtn.addEventListener("click", (e) => deleteConversation(conv.id, e));
+ 
+    item.appendChild(titleSpan);
+    item.appendChild(deleteBtn);
 
     // Clicking the item (not the delete button) loads that conversation
     item.addEventListener("click", () => loadConversation(conv.id));
@@ -135,11 +197,6 @@ function renderHistoryList() {
 
 // ============================================================
 // 📂 LOAD A CONVERSATION
-// When the user clicks a history item, we:
-// 1. Update the current ID
-// 2. Load that conversation's messages into chatHistory
-// 3. Re-render the chat messages area
-// 4. Re-render the sidebar to highlight the active item
 // ============================================================
 function loadConversation(id) {
   const conversations = getConversations();
@@ -147,12 +204,10 @@ function loadConversation(id) {
   if (!conv) return;
 
   currentConversationId = id;
-  chatHistory = [...conv.messages];  // copy the saved messages into memory
+  chatHistory = [...conv.messages]; 
 
-  // Clear the chat UI
   chatMessages.innerHTML = "";
 
-  // Re-render each message
   chatHistory.forEach((msg) => {
     if (msg.role !== "system") {
       addMessageToChat(msg.role, msg.content);
@@ -166,9 +221,6 @@ function loadConversation(id) {
 
 // ============================================================
 // 💾 SAVE THE CURRENT CONVERSATION
-// After each message exchange, we write the updated chatHistory
-// back to localStorage under the current conversation's ID.
-// If it's the first user message, we use it to set the title.
 // ============================================================
 function saveCurrentConversation() {
   if (!currentConversationId) return;
@@ -176,8 +228,6 @@ function saveCurrentConversation() {
   const conversations = getConversations();
   const conv = conversations[currentConversationId];
   if (!conv) return;
-
-  // Auto-generate title from first user message
   const firstUserMsg = chatHistory.find((m) => m.role === "user");
   if (firstUserMsg && conv.title === "New conversation") {
     conv.title = firstUserMsg.content.slice(0, 40) + (firstUserMsg.content.length > 40 ? "..." : "");
@@ -192,24 +242,19 @@ function saveCurrentConversation() {
 
 // ============================================================
 // 🗑️ DELETE A CONVERSATION
-// We stop the click from bubbling up to the item (which would
-// try to load the deleted conversation).
-// If we delete the current conversation, we load the next one.
 // ============================================================
 function deleteConversation(id, event) {
-  event.stopPropagation(); // prevent the click from loading the conversation
+  event.stopPropagation(); 
 
   const conversations = getConversations();
   delete conversations[id];
   saveConversations(conversations);
 
-  // If we deleted the active conversation, switch to another
   if (id === currentConversationId) {
     const remaining = Object.keys(conversations);
     if (remaining.length > 0) {
       loadConversation(remaining[remaining.length - 1]);
     } else {
-      // No conversations left → create a fresh one
       startNewChat();
       return;
     }
@@ -220,17 +265,13 @@ function deleteConversation(id, event) {
 
 // ============================================================
 // ➕ START A NEW CHAT
-// Called by the "+ Nova Conversa" button in the HTML.
-// Creates a fresh conversation, sets it as active, clears the UI.
 // ============================================================
 function startNewChat() {
   const id = createNewConversation();
   currentConversationId = id;
 
-  // Reset in-memory chatHistory to just the greeting
   chatHistory = [{ role: "assistant", content: GREETING }];
 
-  // Clear the chat UI and show only the greeting
   chatMessages.innerHTML = "";
   addMessageToChat("assistant", GREETING);
 
@@ -240,9 +281,6 @@ function startNewChat() {
 
 // ============================================================
 // 🚀 INITIALIZATION
-// When the page loads, we either:
-//   A) Find existing conversations and load the most recent one
-//   B) Create a brand new conversation (first-time user)
 // ============================================================
 function init() {
   const conversations = getConversations();
@@ -279,8 +317,6 @@ sendButton.addEventListener("click", sendMessage);
 
 // ============================================================
 // 📤 SEND MESSAGE
-// Core function — sends the message to the API, streams the
-// response, and saves everything to localStorage at the end.
 // ============================================================
 async function sendMessage() {
   const message = userInput.value.trim();
@@ -297,7 +333,6 @@ async function sendMessage() {
 
   chatHistory.push({ role: "user", content: message });
 
-  // 💾 Save immediately after user sends (so title can update)
   saveCurrentConversation();
 
   try {
@@ -312,13 +347,12 @@ async function sendMessage() {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: chatHistory }),
+      body: JSON.stringify({ messages: buildPayload() }),
     });
 
     if (!response.ok) throw new Error("Failed to get response");
     if (!response.body) throw new Error("Response body is null");
 
-    // Stream the response
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let responseText = "";

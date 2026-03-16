@@ -1,8 +1,3 @@
-/**
- * Author: Alvesss04
- * Project helped by AI tools.
- */
-
 <!doctype html>
 <html lang="en">
     <head>
@@ -247,18 +242,78 @@
                 color: #ef4444;
             }
 
-			.new-chat-btn {
-				background: var(--primary-color);
-				color: white;
-				border: none;
-				padding: 10px;
-				border-radius: 8px;
-				cursor: pointer;
-				font-weight: bold;
-			}
-
-			.new-chat-btn:hover {
+			.rename-input {
+                flex: 1;
+                background: #1a1a1a;
+                border: 1px solid var(--primary-color);
+                border-radius: 4px;
+                color: var(--text-main);
+                font-size: 0.85rem;
+                font-family: inherit;
+                padding: 2px 6px;
+                outline: none;
+                width: 100%;
+                min-width: 0; /* prevents flex overflow */
+            }
+ 
+            /* ── LANGUAGE SELECTOR ── */
+            .sidebar-label {
+                font-size: 0.75rem;
+                color: var(--text-light);
+                margin-bottom: 2px;
+            }
+ 
+            #language-select {
+                width: 100%;
+                padding: 8px 10px;
+                background: var(--bg-input);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                color: var(--text-main);
+                font-size: 0.85rem;
+                font-family: inherit;
+                cursor: pointer;
+                outline: none;
+                transition: border-color 0.15s;
+                appearance: none; /* removes browser default arrow */
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                padding-right: 30px;
+            }
+ 
+            #language-select:hover,
+            #language-select:focus {
+                border-color: var(--primary-color);
+            }
+ 
+            #language-select option {
+                background: #2a2a2a;
+                color: var(--text-main);
+            }
+ 
+            /* ── BUTTONS ── */
+            .new-chat-btn {
+                background: var(--primary-color);
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: background-color 0.2s;
+                width: 100%;
+            }
+ 
+            .new-chat-btn:hover {
                 background-color: var(--primary-hover);
+            }
+ 
+            /* ── SIDEBAR DIVIDER ── */
+            .sidebar-divider {
+                border: none;
+                border-top: 1px solid var(--border-color);
+                margin: 2px 0;
             }
 
 		</style>
@@ -272,6 +327,28 @@
 		<div class="app-layout">
     <aside class="sidebar">
         <button class="new-chat-btn" onclick="startNewChat()">New Chat</button>
+
+                <hr class="sidebar-divider" />
+ 
+                <!-- 🌐 Language selector
+                     Changing this dropdown takes effect on the very next
+                     message — no need to start a new conversation. -->
+                <div>
+                    <p class="sidebar-label">🌐 AI Language</p>
+                    <select id="language-select">
+                        <option value="English">🇬🇧 English</option>
+                        <option value="Portuguese">🇵🇹 Portuguese</option>
+                        <option value="Spanish">🇪🇸 Spanish</option>
+                        <option value="French">🇫🇷 French</option>
+                        <option value="German">🇩🇪 German</option>
+                        <option value="Italian">🇮🇹 Italian</option>
+                        <option value="Japanese">🇯🇵 Japanese</option>
+                        <option value="Chinese">🇨🇳 Chinese</option>
+                        <option value="Arabic">🇸🇦 Arabic</option>
+                    </select>
+                </div>
+ 
+                <hr class="sidebar-divider" />
         <div id="history-list" class="history-list">
         </div>
     </aside>
