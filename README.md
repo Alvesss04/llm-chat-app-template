@@ -14,133 +14,39 @@ This project started from Cloudflare's official `llm-chat-app-template`. Below i
 
 ### 🎨 Visual Redesign (`public/index.html`)
 
-The original template had a basic light-themed UI. I redesigned it with a full dark theme using a custom CSS variable system:
-
-| Variable | Value | Purpose |
-|---|---|---|
-| `--bg-main` | `#121212` | Page background |
-| `--bg-chat` | `#1c1c1c` | Chat area background |
-| `--bg-input` | `#2a2a2a` | Input field background |
-| `--primary-color` | `#f6821f` | Cloudflare orange accent |
-| `--user-msg-bg` | `#f6821f` | User message bubbles |
-| `--assistant-msg-bg` | `#545454` | AI message bubbles |
-
-Other visual changes:
-- Rounded chat container with a visible border
-- Distinct user vs assistant message bubble styles
-- Responsive layout that works on mobile and desktop
-- Custom styled send button with hover and disabled states
-- Typing indicator styled in the brand orange
+The original template had a basic light-themed UI. I redesigned it with a full dark theme using a custom CSS variable system.
 
 ---
 
-### 🗂️ Chat History Sidebar (`public/index.html`)
+### 🗂️ Auxiliar Sidebar (`public/index.html`)
 
-Added a sidebar panel to the left of the chat that shows all saved conversations. Built entirely with HTML and CSS — no extra libraries.
+Added a sidebar panel to the left of the chat that shows all saved conversations, also some feaures including language, search bar, and few more features.
 
-**New HTML structure:**
-```html
-<div class="app-layout">
-  <aside class="sidebar">
-    <button class="new-chat-btn">New Chat/button>
-    <div id="history-list" class="history-list"></div>
-  </aside>
-  <div class="chat-container">...</div>
-</div>
-```
-
-**New CSS classes added:**
-- `.app-layout` — flexbox wrapper that holds sidebar + chat side by side
-- `.sidebar` — fixed-width panel (240px) with its own scroll
-- `.history-list` — scrollable list of conversation items
-- `.history-item` — individual conversation row with title + delete button
-- `.history-item.active` — highlights the currently open conversation
-- `.history-title` — truncates long titles with ellipsis
-- `.delete-btn` — hidden by default, appears on hover
-- `.new-chat-btn` — styled button to start a fresh conversation
 
 ---
 
 ### 💾 Persistent Chat History (`public/chat.js`)
 
+
 This was the biggest addition. The original `chat.js` stored messages only in a JavaScript variable (`chatHistory`), which reset every time the page was refreshed.
 
 I replaced that with a full **localStorage-based persistence system**.
-
-#### How it works
-
-All conversations are saved in the browser's `localStorage` under a single key called `"conversations"`. Each conversation is an object shaped like this:
-
-```json
-{
-  "conv_1718123456_4823": {
-    "id": "conv_1718123456_4823",
-    "title": "How does Cloudflare work...",
-    "createdAt": 1718123456789,
-    "messages": [
-      { "role": "assistant", "content": "Hello!..." },
-      { "role": "user", "content": "How does Cloudflare work?" },
-      { "role": "assistant", "content": "Great question!..." }
-    ]
-  }
-}
-```
-
-#### New functions added
-
-| Function | What it does |
-|---|---|
-| `generateId()` | Creates a unique ID using timestamp + random number |
-| `getConversations()` | Reads all conversations from localStorage |
-| `saveConversations()` | Writes all conversations back to localStorage |
-| `createNewConversation()` | Creates a fresh conversation and saves it |
-| `loadConversation(id)` | Loads a saved conversation into the chat UI |
-| `saveCurrentConversation()` | Persists the current chat after every message |
-| `renderHistoryList()` | Rebuilds the sidebar list from localStorage |
-| `deleteConversation(id, event)` | Removes a conversation and handles edge cases |
-| `startNewChat()` | Resets the UI and creates a new conversation |
-| `init()` | Runs on page load — restores the last conversation or starts fresh |
-| `escapeHtml(text)` | Sanitises user input to prevent XSS attacks |
-
 
 ---
 
 ### ⚙️ AI Gateway Integration (`src/index.ts`)
 
-Enabled Cloudflare's AI Gateway for the Workers AI call, which adds caching, analytics, and observability on top of the model requests.
+Enabled Cloudflare's AI Gateway for the Workers AI call, which adds caching, analytics, and observability on top of the model requests. Used a private one created by me.
 
-```ts
-const stream = await env.AI.run(
-  MODEL_ID,
-  {
-    messages,
-    max_tokens: 1024,
-    stream: true,
-  },
-  {
-    gateway: {
-      id: "*******-*******",
-      skipCache: false,
-      cacheTtl: 3600,       // Cache responses for 1 hour
-    },
-  }
-);
-```
 
 **What AI Gateway gives to my benefit:**
 - 📊 Request logs and analytics in the Cloudflare dashboard
 - 🔁 Rate limiting and fallback options (configurable in the dashboard)
-
 ---
 
-### 🧠 Custom System Prompt (`src/index.ts`)
+### 📊 File input option (`public/index.html` && `public/chat.js`)
 
-Changed the default system prompt to make the assistant friendlier and clearer:
-
-```ts
-const SYSTEM_PROMPT =
-  "You are a friendly, patient assistant who happily helps by giving simple, clear, and reliable answers.";
-```
+Implement a new feature which gives the possibility to import files into the chat. Possible files: (.pdf .docs .txt .md .js .ts .jsx .tsx .py .css .html .json .csv .yaml .yml .sh .env)
 
 ---
 
@@ -192,9 +98,8 @@ npx wrangler tail
 - ✏️ **Rename conversations** — double-click a title in the sidebar to edit it - DONE ✅
 - 🌐 **Multi-language UI** — change the AI language before texting - DONE ✅
 - 🤖 **New and multiple chats** — have multiple chats and create new ones when needed - DONE ✅
-- 🔍 **Search** — filter conversations by keyword  ✅
-- 📝 **Markdown rendering** — render AI responses as formatted markdown
-- 📤 **Export** — download a conversation as `.txt` or `.md`
+- 🔍 **Search** — filter conversations by keyword - DONE ✅
+- 📤 **Import** — import files to improve the conversation - DONE ✅
 - ☁️ **Server-side storage** — move chat history to Cloudflare KV or D1 so it syncs across devices
 
 
