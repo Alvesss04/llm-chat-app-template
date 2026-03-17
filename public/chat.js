@@ -21,9 +21,15 @@ const chatMessages = document.getElementById("chat-messages");
 const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 const typingIndicator = document.getElementById("typing-indicator");
-const historyList = document.getElementById("history-list");
+const historyList     = document.getElementById("history-list");
 const languageSelect  = document.getElementById("language-select");
-const searchInput = document.getElementById("search-input");
+const searchInput     = document.getElementById("search-input");
+
+const attachButton    = document.getElementById("attach-button");
+const fileInput       = document.getElementById("file-input");
+const fileChip        = document.getElementById("file-chip");
+const fileChipName    = document.getElementById("file-chip-name");
+const fileChipRemove  = document.getElementById("file-chip-remove");
 
 // ============================================================
 // IN-MEMORY STATE
@@ -36,6 +42,7 @@ const BASE_SYSTEM_PROMPT =
 let chatHistory = [];
 let currentConversationId = null;
 let isProcessing = false;
+let attachedFile = null;
 
 
 function getSystemPrompt() {
@@ -143,8 +150,128 @@ function startRename(convId, currentTitle, spanEl, event) {
 }
 
 // ============================================================
-// SEARCH — getSearchQuery()
+// FILE UPLOAD — supports .txt, .md, .js, .py, .csv,
+//                  .pdf (via PDF.js) and .docx (via Mammoth.js)
 // ============================================================
+function setupFileUpload() {
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+
+  attachButton.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    showFileChip(`Reading ${file.name}...`);
+    attachButton.disabled = true;
+
+    try {
+      const text = await extractText(file);
+
+      if (text.length > 15000) {
+        alert(`"${file.name}" extracted ${text.length} characters. This may exceed the AI's token limit and get cut off. Consider using a shorter section.`);
+      }
+
+      attachedFile = { name: file.name, content: text };
+      showFileChip(file.name);
+    } catch (err) {
+      console.error("File read error:", err);
+      alert(`Could not read "${file.name}": ${err.message}`);
+      clearAttachment();
+    } finally {
+      attachButton.disabled = false;
+      fileInput.value = ""; 
+    }
+  });
+
+  fileChipRemove.addEventListener("click", clearAttachment);
+}
+
+// ============================================================
+// TEXT EXTRACTION
+// ============================================================
+async function extractText(file) {
+  const ext = file.name.split(".").pop().toLowerCase();
+
+  if (ext === "pdf") return extractPdf(file);
+  if (ext === "docx") return extractDocx(file);
+
+  return readAsText(file);
+}
+
+function readAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = (e) => resolve(e.target.result);
+    reader.onerror = ()  => reject(new Error("Failed to read file"));
+    reader.readAsText(file);
+  });
+}
+
+async function extractPdf(file) {
+  if (!window.pdfjsLib) throw new Error("PDF.js not loaded");
+
+  // PDF.js needs an ArrayBuffer (raw binary data), not text
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  const pageTexts = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    // Each page returns an array of text items — join them with spaces
+    const pageText = content.items.map((item) => item.str).join(" ");
+    pageTexts.push(`[Page ${i}]\n${pageText}`);
+  }
+
+  return pageTexts.join("\n\n");
+}
+
+// Extracts text from a .docx file using Mammoth.js
+// Mammoth reads the ZIP/XML structure of .docx and returns plain text
+async function extractDocx(file) {
+  if (!window.mammoth) throw new Error("Mammoth.js not loaded");
+
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+function showFileChip(name) {
+  fileChipName.textContent = name;
+  fileChip.classList.add("visible");
+}
+
+function clearAttachment() {
+  attachedFile = null;
+  fileChipName.textContent = "";
+  fileChip.classList.remove("visible");
+  fileInput.value = "";
+}
+
+function buildMessageWithFile(userText) {
+  if (!attachedFile) return userText;
+
+  const ext = attachedFile.name.split(".").pop().toLowerCase();
+
+  // PDF and DOCX are prose — no code block, just plain text
+  if (ext === "pdf" || ext === "docx") {
+    return `[File: ${attachedFile.name}]\n${attachedFile.content}\n\n${userText}`.trim();
+  }
+
+  // Code / data files — wrap in a fenced code block with language hint
+  const langMap = {
+    js: "javascript", ts: "typescript", jsx: "javascript", tsx: "typescript",
+    py: "python", css: "css", html: "html", json: "json", csv: "csv",
+    md: "markdown", sh: "bash", yaml: "yaml", yml: "yaml"
+  };
+  const lang = langMap[ext] || "";
+
+  return `[File: ${attachedFile.name}]\n\`\`\`${lang}\n${attachedFile.content}\n\`\`\`\n\n${userText}`.trim();
+}
 function getSearchQuery() {
   return searchInput ? searchInput.value.trim().toLowerCase() : "";
 }
@@ -170,7 +297,6 @@ function matchConversation(conv, query) {
 
 // ============================================================
 // RENDER THE SIDEBAR HISTORY LIST
-// Search-aware: reads the query, filters, highlights matches
 // ============================================================
 function renderHistoryList() {
   const conversations = getConversations();
@@ -187,7 +313,6 @@ function renderHistoryList() {
     return;
   }
 
-  // Only keep conversations that match the query (all pass when query is empty)
   const filtered = sorted.filter((conv) => matchConversation(conv, query).matched);
 
   if (filtered.length === 0) {
@@ -206,7 +331,6 @@ function renderHistoryList() {
     titleSpan.className = "history-title";
     titleSpan.title = conv.title;
 
-    // Highlight the matching part of the title in orange
     if (query && titleMatches) {
       const regex = new RegExp(`(${escapeRegex(query)})`, "gi");
       titleSpan.innerHTML = escapeHtml(conv.title).replace(
@@ -220,7 +344,6 @@ function renderHistoryList() {
       startRename(conv.id, conv.title, titleSpan, e)
     );
 
-    // Right side: optional "X msg" badge + delete button
     const rightSide = document.createElement("div");
     rightSide.className = "item-right";
 
@@ -334,22 +457,21 @@ function startNewChat() {
 // INITIALIZATION
 // ============================================================
 function init() {
-  // 🔍 Wire up search — filters the sidebar on every keystroke
   if (searchInput) {
     searchInput.addEventListener("input", () => renderHistoryList());
   }
+
+  setupFileUpload();
 
   const conversations = getConversations();
   const ids = Object.keys(conversations);
 
   if (ids.length > 0) {
-    // Load the most recently created conversation
     const latest = Object.values(conversations).sort(
       (a, b) => b.createdAt - a.createdAt
     )[0];
     loadConversation(latest.id);
   } else {
-    // First time: create a fresh conversation
     startNewChat();
   }
 }
@@ -387,7 +509,10 @@ async function sendMessage() {
   userInput.style.height = "auto";
   typingIndicator.classList.add("visible");
 
-  chatHistory.push({ role: "user", content: message });
+  const fullMessage = buildMessageWithFile(message);
+  chatHistory.push({ role: "user", content: fullMessage });
+
+  clearAttachment();
 
   saveCurrentConversation();
 
