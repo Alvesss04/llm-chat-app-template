@@ -517,12 +517,13 @@ async function sendMessage() {
   saveCurrentConversation();
 
   try {
+    const assistantWrapper = document.createElement("div");
+    assistantWrapper.className = "message-wrapper assistant-wrapper";
+
     const assistantMessageEl = document.createElement("div");
     assistantMessageEl.className = "message assistant-message";
-    assistantMessageEl.innerHTML = "<p></p>";
-    chatMessages.appendChild(assistantMessageEl);
-    const assistantTextEl = assistantMessageEl.querySelector("p");
-
+    assistantWrapper.appendChild(assistantMessageEl);
+    chatMessages.appendChild(assistantWrapper);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     const response = await fetch("/api/chat", {
@@ -540,7 +541,7 @@ async function sendMessage() {
     let buffer = "";
 
     const flushAssistantText = () => {
-      assistantTextEl.textContent = responseText;
+      assistantMessageEl.innerHTML = renderMarkdown(responseText);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     };
 
@@ -579,6 +580,8 @@ async function sendMessage() {
     if (responseText.length > 0) {
       chatHistory.push({ role: "assistant", content: responseText });
       saveCurrentConversation();
+      // Add copy button now that the full response is ready
+      assistantWrapper.appendChild(makeCopyButton(responseText));
     }
   } catch (error) {
     console.error("Error:", error);
@@ -607,13 +610,61 @@ function extractContent(jsonData) {
   return "";
 }
 
-/** Adds a message bubble to the chat UI */
+// ============================================================
+// 📝 MARKDOWN RENDERING
+// ============================================================
+function renderMarkdown(text) {
+  if (!window.marked) return escapeHtml(text);
+  marked.setOptions({ breaks: true });
+  return marked.parse(text);
+}
+
 function addMessageToChat(role, content) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `message-wrapper ${role === "user" ? "user-wrapper" : "assistant-wrapper"}`;
+
   const messageEl = document.createElement("div");
   messageEl.className = `message ${role}-message`;
-  messageEl.innerHTML = `<p>${escapeHtml(content)}</p>`;
-  chatMessages.appendChild(messageEl);
+
+  if (role === "assistant") 
+    messageEl.innerHTML = renderMarkdown(content);
+   else 
+    messageEl.innerHTML = `<p>${escapeHtml(content)}</p>`;
+
+  wrapper.appendChild(messageEl);
+
+  if (role === "assistant") {
+    const copyBtn = makeCopyButton(content);
+    wrapper.appendChild(copyBtn);
+  }
+
+  chatMessages.appendChild(wrapper);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// ============================================================
+// 📋 COPY BUTTON
+// ============================================================
+function makeCopyButton(content) {
+  const btn = document.createElement("button");
+  btn.className = "copy-btn";
+  btn.textContent = "Copy";
+
+  btn.addEventListener("click", () => {
+    navigator.clipboard.writeText(content).then(() => {
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "Copy";
+        btn.classList.remove("copied");
+      }, 2000);
+    }).catch(() => {
+      btn.textContent = "Failed";
+      setTimeout(() => { btn.textContent = "Copy"; }, 2000);
+    });
+  });
+
+  return btn;
 }
 
 /** Prevents XSS by escaping HTML special characters */

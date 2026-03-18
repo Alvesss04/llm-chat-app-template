@@ -100,6 +100,8 @@ npx wrangler tail
 - 🤖 **New and multiple chats** — have multiple chats and create new ones when needed - DONE ✅
 - 🔍 **Search** — filter conversations by keyword - DONE ✅
 - 📤 **Import** — import files to improve the conversation - DONE ✅
+- 📝 **Markdown rendering** — render AI responses as formatted text - DONE ✅
+- 📋 **Copy message button** — click to copy any AI response - DONE ✅
 - ☁️ **Server-side storage** — move chat history to Cloudflare KV or D1 so it syncs across devices
 
 
