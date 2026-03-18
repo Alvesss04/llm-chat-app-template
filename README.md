@@ -20,7 +20,7 @@ The original template had a basic light-themed UI. I redesigned it with a full d
 
 ### 🗂️ Sidebar (`public/index.html`)
 
-Added a sidebar panel to the left of the chat with:
+Added a sidebar panel to the left of the chat with some features like:
 - **Conversation history list** — all saved chats, newest first
 - **New Chat button** — start a fresh conversation instantly
 - **Language selector** — change the AI response language on the fly
