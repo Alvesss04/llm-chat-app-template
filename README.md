@@ -1,6 +1,6 @@
 # 🤖 LLM Chat App — by Alvesss04
 
-A customised AI chat application built on top of the [Cloudflare Workers AI template](https://developers.cloudflare.com/workers-ai/), featuring a dark UI, persistent chat history, file import, markdown rendering, and AI Gateway integration.
+A customised AI chat application built on top of the [Cloudflare Workers AI template](https://developers.cloudflare.com/workers-ai/), featuring a dark UI, persistent chat history, server-side storage, file import, markdown rendering, and AI Gateway integration.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Alvesss04/llm-chat-app-template)
 
@@ -20,7 +20,7 @@ The original template had a basic light-themed UI. I redesigned it with a full d
 
 ### 🗂️ Sidebar (`public/index.html`)
 
-Added a sidebar panel to the left of the chat with some features like:
+Added a sidebar panel to the left of the chat with:
 - **Conversation history list** — all saved chats, newest first
 - **New Chat button** — start a fresh conversation instantly
 - **Language selector** — change the AI response language on the fly
@@ -28,20 +28,36 @@ Added a sidebar panel to the left of the chat with some features like:
 
 ---
 
+### ☁️ Server-Side Storage with Cloudflare KV (`src/index.ts` + `public/chat.js`)
+
+Conversations are stored server-side in **Cloudflare KV** instead of the browser's localStorage. This means chat history syncs across all devices and browsers automatically.
+
+**How it works:**
+- The Worker exposes 3 API routes: `GET /api/conversations`, `POST /api/conversations`, and `DELETE /api/conversations/:id`
+- The frontend calls these routes instead of reading/writing localStorage
+- All conversations are stored as a single JSON blob in KV under one key
+- When login is added later, the key will be scoped per user
+
+**What changed in the backend (`src/index.ts`):**
+- Added `CHAT_HISTORY: KVNamespace` binding to `types.ts`
+- Added 3 conversation API routes to `index.ts`
+- `wrangler.jsonc` has the KV namespace binding (`CHAT_HISTORY`)
+
+---
+
 ### 💾 Persistent Chat History (`public/chat.js`)
 
-The original `chat.js` stored messages only in a JavaScript variable which reset on every page refresh. Replaced with a full **localStorage-based persistence system** where every conversation is saved automatically and restored on page load.
-
-Key behaviours:
-- Auto-saves after every message exchange
+Every conversation is saved automatically after each message exchange and restored on page load. Key behaviours:
+- Auto-saves after every user message and AI response
 - Auto-generates conversation titles from the first user message
 - Loads the most recent conversation on startup
+- Syncs across devices via Cloudflare KV
 
 ---
 
 ### ✏️ Rename Conversations (`public/chat.js`)
 
-Double-click any conversation title in the sidebar to rename it inline. Press `Enter` or click away to save, `Escape` to cancel.
+A ✏️ pencil icon appears on hover next to each conversation in the sidebar. Clicking it turns the title into an editable input field inline. Press `Enter` or click away to save, `Escape` to cancel without saving.
 
 ---
 
@@ -103,9 +119,9 @@ Enabled Cloudflare's AI Gateway for the Workers AI call, which adds caching, ana
 │   ├── index.html      # Chat UI — dark theme, sidebar, all feature styles
 │   └── chat.js         # Frontend logic — all features implemented here
 ├── src/
-│   ├── index.ts        # Worker — AI Gateway enabled, custom system prompt
-│   └── types.ts        # TypeScript types (unchanged)
-├── wrangler.jsonc      # Cloudflare Worker config (unchanged)
+│   ├── index.ts        # Worker — KV API routes, AI Gateway, system prompt
+│   └── types.ts        # TypeScript types — includes KV binding
+├── wrangler.jsonc      # Cloudflare Worker config — includes KV namespace
 └── README.md           # This file
 ```
 
@@ -118,9 +134,16 @@ Enabled Cloudflare's AI Gateway for the Workers AI call, which adds caching, ana
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - A Cloudflare account with Workers AI access
 
+### Setup KV Namespace
+```bash
+npx wrangler kv namespace create CHAT_HISTORY
+```
+Add the output to `wrangler.jsonc` under `kv_namespaces`.
+
 ### Run locally
 ```bash
 npm install
+npm run cf-typegen
 npm run dev
 # Opens at http://localhost:8787
 ```
@@ -142,8 +165,9 @@ npx wrangler tail
 | Feature | Status |
 |---|---|
 | 🎨 Dark UI redesign | ✅ Done |
-| 💾 Persistent chat history (localStorage) | ✅ Done |
-| ✏️ Rename conversations | ✅ Done |
+| ☁️ Server-side storage (Cloudflare KV) | ✅ Done |
+| 💾 Persistent chat history | ✅ Done |
+| ✏️ Rename conversations (pencil button) | ✅ Done |
 | 🌐 Multi-language AI responses | ✅ Done |
 | 🤖 Multiple chats | ✅ Done |
 | 🔍 Search conversations | ✅ Done |
@@ -151,7 +175,7 @@ npx wrangler tail
 | 📝 Markdown rendering | ✅ Done |
 | 📋 Copy message button | ✅ Done |
 | ⚙️ AI Gateway integration | ✅ Done |
-| ☁️ Server-side storage (Cloudflare KV/D1) | ✅ Done |
+| 🔐 Per-user login & history | 🔜 DO IT OR NOT? |
 
 ---
 
@@ -160,7 +184,7 @@ npx wrangler tail
 - [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
 - [Cloudflare Workers AI Models](https://developers.cloudflare.com/workers-ai/models/)
 - [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)
-- [MDN: localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)
+- [Cloudflare KV](https://developers.cloudflare.com/kv/)
 - [Marked.js](https://marked.js.org/)
 - [Highlight.js](https://highlightjs.org/)
 - [PDF.js](https://mozilla.github.io/pdf.js/)
