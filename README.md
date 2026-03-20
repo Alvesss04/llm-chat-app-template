@@ -151,7 +151,7 @@ npx wrangler tail
 | 📝 Markdown rendering | ✅ Done |
 | 📋 Copy message button | ✅ Done |
 | ⚙️ AI Gateway integration | ✅ Done |
-| ☁️ Server-side storage (Cloudflare KV/D1) | 🔜 TODAYS OBJECTIVE! |
+| ☁️ Server-side storage (Cloudflare KV/D1) | ✅ Done |
 
 ---
 

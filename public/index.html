@@ -242,6 +242,22 @@
                 color: #ef4444;
             }
 
+            .rename-btn {
+                flex-shrink: 0;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                font-size: 0.7rem;
+                padding: 2px 4px;
+                border-radius: 4px;
+                opacity: 0;
+                transition: opacity 0.15s;
+            }
+
+            .history-item:hover .rename-btn {
+                opacity: 1;
+            }
+
 			.rename-input {
                 flex: 1;
                 background: #1a1a1a;

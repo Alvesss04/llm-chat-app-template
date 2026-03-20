@@ -37,7 +37,6 @@ let chatHistory = [];
 let currentConversationId = null;
 let isProcessing = false;
 let attachedFile = null;
-let isRenaming = false; // prevents sidebar rebuild while user is typing a rename
 
 
 function getSystemPrompt() {
@@ -99,22 +98,17 @@ async function createNewConversation() {
 
 // ============================================================
 // RENAME A CONVERSATION
+// Triggered by the ✏️ pencil button — no timing issues
 // ============================================================
-function startRename(convId, currentTitle, spanEl, event) {
-  event.stopPropagation();
-  isRenaming = true; // 🔒 freeze sidebar rebuilds while editing
-
-  const liveItem = historyList.querySelector(`[data-conv-id="${convId}"]`);
-  if (!liveItem) { isRenaming = false; return; }
-  const liveSpan = liveItem.querySelector(".history-title");
-  if (!liveSpan) { isRenaming = false; return; }
+function startRename(convId, currentTitle, item) {
+  const titleSpan = item.querySelector(".history-title");
+  if (!titleSpan) return;
 
   const input = document.createElement("input");
   input.type = "text";
-  input.value = liveSpan.textContent;
+  input.value = currentTitle;
   input.className = "rename-input";
-  liveSpan.replaceWith(input);
-
+  titleSpan.replaceWith(input);
   input.focus();
   input.select();
 
@@ -125,7 +119,6 @@ function startRename(convId, currentTitle, spanEl, event) {
   async function saveRename() {
     if (saved) return;
     saved = true;
-    isRenaming = false; // 🔓 allow sidebar to rebuild again
     const newTitle = input.value.trim() || currentTitle;
     const conversations = await getConversations();
     if (conversations[convId]) {
@@ -138,8 +131,7 @@ function startRename(convId, currentTitle, spanEl, event) {
   function cancelRename() {
     if (saved) return;
     saved = true;
-    isRenaming = false; // 🔓 allow sidebar to rebuild again
-    renderHistoryList();
+    input.replaceWith(titleSpan); // restore original without saving
   }
 
   input.addEventListener("keydown", (e) => {
@@ -148,7 +140,8 @@ function startRename(convId, currentTitle, spanEl, event) {
     if (e.key === "Escape") cancelRename();
   });
 
-  input.addEventListener("blur", saveRename);
+  // Small delay so blur doesn't fire immediately during focus()
+  setTimeout(() => input.addEventListener("blur", saveRename), 100);
 }
 
 // ============================================================
@@ -301,7 +294,6 @@ function matchConversation(conv, query) {
 // RENDER THE SIDEBAR HISTORY LIST
 // ============================================================
 async function renderHistoryList() {
-  if (isRenaming) return; // don't rebuild sidebar while user is typing a rename
   const conversations = await getConversations();
   const query = getSearchQuery();
 
@@ -343,10 +335,6 @@ async function renderHistoryList() {
       titleSpan.textContent = conv.title;
     }
 
-    titleSpan.addEventListener("dblclick", (e) =>
-      startRename(conv.id, conv.title, titleSpan, e)
-    );
-
     const rightSide = document.createElement("div");
     rightSide.className = "item-right";
 
@@ -356,6 +344,17 @@ async function renderHistoryList() {
       badge.textContent = `${messageMatches} msg`;
       rightSide.appendChild(badge);
     }
+
+    // ✏️ Pencil button — appears on hover, triggers rename
+    const renameBtn = document.createElement("button");
+    renameBtn.className = "rename-btn";
+    renameBtn.title = "Rename conversation";
+    renameBtn.textContent = "✏️";
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      startRename(conv.id, conv.title, item);
+    });
+    rightSide.appendChild(renameBtn);
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "delete-btn";
@@ -465,6 +464,8 @@ async function init() {
     } else {
       await startNewChat();
     }
+    // Explicitly render sidebar after everything is loaded
+    renderHistoryList();
   } catch (err) {
     console.error("Failed to load from server:", err);
     await startNewChat();
