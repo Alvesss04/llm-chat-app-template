@@ -9,12 +9,6 @@
  */
 
 // ============================================================
-// LOCALSTORAGE KEYS
-// ============================================================
-const STORAGE_KEY = "conversations";
-const CURRENT_ID_KEY = "currentConversationId";
-
-// ============================================================
 // DOM ELEMENTS
 // ============================================================
 const chatMessages = document.getElementById("chat-messages");
@@ -43,6 +37,7 @@ let chatHistory = [];
 let currentConversationId = null;
 let isProcessing = false;
 let attachedFile = null;
+let isRenaming = false; // prevents sidebar rebuild while user is typing a rename
 
 
 function getSystemPrompt() {
@@ -65,36 +60,40 @@ function generateId() {
 }
 
 // ============================================================
-// LOCALSTORAGE HELPERS
+// 🌐 API HELPERS — reads/writes from Cloudflare KV via the Worker API
 // ============================================================
-function getConversations() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  // If nothing is saved yet, return an empty object
-  return raw ? JSON.parse(raw) : {};
+async function getConversations() {
+  const res = await fetch("/api/conversations", { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load conversations");
+  return await res.json();
 }
 
-function saveConversations(conversations) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+async function saveConversations(conversations) {
+  await fetch("/api/conversations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversations }),
+  });
+}
+
+async function deleteConversationFromServer(id) {
+  await fetch(`/api/conversations/${id}`, { method: "DELETE" });
 }
 
 // ============================================================
 // CREATE A NEW CONVERSATION
 // ============================================================
-function createNewConversation() {
+async function createNewConversation() {
   const id = generateId();
   const newConv = {
     id,
     title: "New conversation",
     createdAt: Date.now(),
-    messages: [
-      { role: "assistant", content: GREETING }
-    ],
+    messages: [{ role: "assistant", content: GREETING }],
   };
-
-  const conversations = getConversations();
+  const conversations = await getConversations();
   conversations[id] = newConv;
-  saveConversations(conversations);
-
+  await saveConversations(conversations);
   return id;
 }
 
@@ -103,11 +102,12 @@ function createNewConversation() {
 // ============================================================
 function startRename(convId, currentTitle, spanEl, event) {
   event.stopPropagation();
+  isRenaming = true; // 🔒 freeze sidebar rebuilds while editing
 
   const liveItem = historyList.querySelector(`[data-conv-id="${convId}"]`);
-  if (!liveItem) return;
+  if (!liveItem) { isRenaming = false; return; }
   const liveSpan = liveItem.querySelector(".history-title");
-  if (!liveSpan) return;
+  if (!liveSpan) { isRenaming = false; return; }
 
   const input = document.createElement("input");
   input.type = "text";
@@ -117,35 +117,37 @@ function startRename(convId, currentTitle, spanEl, event) {
 
   input.focus();
   input.select();
- 
+
   input.addEventListener("click", (e) => e.stopPropagation());
- 
+
   let saved = false;
- 
-  function saveRename() {
+
+  async function saveRename() {
     if (saved) return;
     saved = true;
+    isRenaming = false; // 🔓 allow sidebar to rebuild again
     const newTitle = input.value.trim() || currentTitle;
-    const conversations = getConversations();
+    const conversations = await getConversations();
     if (conversations[convId]) {
       conversations[convId].title = newTitle;
-      saveConversations(conversations);
+      await saveConversations(conversations);
     }
     renderHistoryList();
   }
- 
+
   function cancelRename() {
     if (saved) return;
     saved = true;
+    isRenaming = false; // 🔓 allow sidebar to rebuild again
     renderHistoryList();
   }
- 
+
   input.addEventListener("keydown", (e) => {
     e.stopPropagation();
     if (e.key === "Enter") { e.preventDefault(); saveRename(); }
     if (e.key === "Escape") cancelRename();
   });
- 
+
   input.addEventListener("blur", saveRename);
 }
 
@@ -298,9 +300,10 @@ function matchConversation(conv, query) {
 // ============================================================
 // RENDER THE SIDEBAR HISTORY LIST
 // ============================================================
-function renderHistoryList() {
-  const conversations = getConversations();
-  const query = getSearchQuery(); // 🔍 read current search text
+async function renderHistoryList() {
+  if (isRenaming) return; // don't rebuild sidebar while user is typing a rename
+  const conversations = await getConversations();
+  const query = getSearchQuery();
 
   const sorted = Object.values(conversations).sort(
     (a, b) => b.createdAt - a.createdAt
@@ -372,20 +375,17 @@ function renderHistoryList() {
 // ============================================================
 // LOAD A CONVERSATION
 // ============================================================
-function loadConversation(id) {
-  const conversations = getConversations();
+async function loadConversation(id) {
+  const conversations = await getConversations();
   const conv = conversations[id];
   if (!conv) return;
 
   currentConversationId = id;
-  chatHistory = [...conv.messages]; 
+  chatHistory = [...conv.messages];
 
   chatMessages.innerHTML = "";
-
   chatHistory.forEach((msg) => {
-    if (msg.role !== "system") {
-      addMessageToChat(msg.role, msg.content);
-    }
+    if (msg.role !== "system") addMessageToChat(msg.role, msg.content);
   });
 
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -396,35 +396,30 @@ function loadConversation(id) {
 // ============================================================
 // SAVE THE CURRENT CONVERSATION
 // ============================================================
-function saveCurrentConversation() {
+async function saveCurrentConversation() {
   if (!currentConversationId) return;
-
-  const conversations = getConversations();
+  const conversations = await getConversations();
   const conv = conversations[currentConversationId];
   if (!conv) return;
   const firstUserMsg = chatHistory.find((m) => m.role === "user");
   if (firstUserMsg && conv.title === "New conversation") {
     conv.title = firstUserMsg.content.slice(0, 40) + (firstUserMsg.content.length > 40 ? "..." : "");
   }
-
   conv.messages = [...chatHistory];
   conversations[currentConversationId] = conv;
-  saveConversations(conversations);
-
+  await saveConversations(conversations);
   renderHistoryList();
 }
 
 // ============================================================
 // DELETE A CONVERSATION
 // ============================================================
-function deleteConversation(id, event) {
-  event.stopPropagation(); 
-
-  const conversations = getConversations();
-  delete conversations[id];
-  saveConversations(conversations);
+async function deleteConversation(id, event) {
+  event.stopPropagation();
+  await deleteConversationFromServer(id);
 
   if (id === currentConversationId) {
+    const conversations = await getConversations();
     const remaining = Object.keys(conversations);
     if (remaining.length > 0) {
       loadConversation(remaining[remaining.length - 1]);
@@ -433,22 +428,18 @@ function deleteConversation(id, event) {
       return;
     }
   }
-
   renderHistoryList();
 }
 
 // ============================================================
 // START A NEW CHAT
 // ============================================================
-function startNewChat() {
-  const id = createNewConversation();
+async function startNewChat() {
+  const id = await createNewConversation();
   currentConversationId = id;
-
   chatHistory = [{ role: "assistant", content: GREETING }];
-
   chatMessages.innerHTML = "";
   addMessageToChat("assistant", GREETING);
-
   renderHistoryList();
   userInput.focus();
 }
@@ -456,23 +447,27 @@ function startNewChat() {
 // ============================================================
 // INITIALIZATION
 // ============================================================
-function init() {
+async function init() {
   if (searchInput) {
     searchInput.addEventListener("input", () => renderHistoryList());
   }
 
   setupFileUpload();
 
-  const conversations = getConversations();
-  const ids = Object.keys(conversations);
-
-  if (ids.length > 0) {
-    const latest = Object.values(conversations).sort(
-      (a, b) => b.createdAt - a.createdAt
-    )[0];
-    loadConversation(latest.id);
-  } else {
-    startNewChat();
+  try {
+    const conversations = await getConversations();
+    const ids = Object.keys(conversations);
+    if (ids.length > 0) {
+      const latest = Object.values(conversations).sort(
+        (a, b) => b.createdAt - a.createdAt
+      )[0];
+      await loadConversation(latest.id);
+    } else {
+      await startNewChat();
+    }
+  } catch (err) {
+    console.error("Failed to load from server:", err);
+    await startNewChat();
   }
 }
 

@@ -17,6 +17,12 @@ export interface Env {
 	 * Binding for static assets.
 	 */
 	ASSETS: { fetch: (request: Request) => Promise<Response> };
+
+	/**
+	 * KV namespace for storing chat conversations server-side.
+	 * Bound in wrangler.jsonc as "CHAT_HISTORY".
+	 */
+	CHAT_HISTORY: KVNamespace;
 }
 
 /**
@@ -25,4 +31,14 @@ export interface Env {
 export interface ChatMessage {
 	role: "system" | "user" | "assistant";
 	content: string;
+}
+
+/**
+ * Represents a full conversation stored in KV.
+ */
+export interface Conversation {
+	id: string;
+	title: string;
+	createdAt: number;
+	messages: ChatMessage[];
 }
