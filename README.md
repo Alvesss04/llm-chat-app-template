@@ -2,6 +2,8 @@
 
 ### A high-performance, edge-native AI chatbot built on Cloudflare’s global network.
 
+### 🔗 **Live Demo: [llm-chat-app-template.tra-alves.workers.dev](https://llm-chat-app-template.tra-alves.workers.dev)**
+
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Alvesss04/llm-chat-app-template)
 
 ---
