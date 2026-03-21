@@ -82,5 +82,8 @@ npm run deploy
 ```
 
 ---
+---
+## 🤖 AI Usage
+Built with AI assistance. See [PROMPTS.md](./PROMPTS.md) for prompts used and [AI_USAGE.md](./AI_USAGE.md) for full transparency on how AI was used throughout the project.
 
 *Built on top of the [Cloudflare LLM Chat App Template](https://github.com/cloudflare/templates/tree/main/llm-chat-app-template) • Extended by [Alvesss04](https://github.com/Alvesss04)*
