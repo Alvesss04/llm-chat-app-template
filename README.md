@@ -1,10 +1,8 @@
 # 🤖 Alvesss AI Chat
 
-### A high-performance, edge-native AI chatbot built on Cloudflare’s global network.
+### A high-performance, edge-native AI chatbot built on Cloudflare's global network.
 
-### 🔗 **Live Demo: [llm-chat-app-template.tra-alves.workers.dev](https://llm-chat-app-template.tra-alves.workers.dev)**
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Alvesss04/llm-chat-app-template)
+### 🔗 **Live Demo (Not live :/): [llm-chat-app-template.tra-alves.workers.dev](https://llm-chat-app-template.tra-alves.workers.dev)**
 
 ---
 🌟 Overview
@@ -56,22 +54,6 @@ Browser (chat.js)
 
 ---
 
-## 🚀 Running Locally
-
-```bash
-npm install
-npx wrangler kv namespace create CHAT_HISTORY  # first time only
-npm run dev                                     # http://localhost:8787
-```
-
-## 🚢 Deploy
-
-```bash
-npm run deploy
-```
-
----
-
 ## 📁 Project Structure
 
 ```
@@ -84,8 +66,16 @@ npm run deploy
 ```
 
 ---
----
+
 ## 🤖 AI Usage
-Built with AI assistance. See [PROMPTS.md](./PROMPTS.md) for prompts used and [AI_USAGE.md](./AI_USAGE.md) for full transparency on how AI was used throughout the project.
+Built with AI assistance. See [PROMPTS.md](./PROMPTS.md) for prompts used and [AI_Usage.md](./AI_Usage.md) for full transparency on how AI was used throughout the project.
 
 *Built on top of the [Cloudflare LLM Chat App Template](https://github.com/cloudflare/templates/tree/main/llm-chat-app-template) • Extended by [Alvesss04](https://github.com/Alvesss04)*
+
+---
+
+## 📄 License
+
+Copyright © 2026 **Alvesss04**. All Rights Reserved.
+
+This project, including its source code, documentation,was created by me. Unauthorized copying, distribution, modification, or use of this project, in whole or in part, without the express written permission of the authors is strictly prohibited.
